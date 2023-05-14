@@ -1,0 +1,70 @@
+version : '3'
+services:
+  ruoyi-mysql:
+    container_name: ruoyi-mysql
+    image: mysql:8.0.28
+    build:
+      context: .
+      dockerfile: mysql-dockerfile
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/conf:/etc/mysql/conf.d
+      - ./mysql/logs:/logs
+      - ./mysql/data:/var/lib/mysql
+    command: [
+          'mysqld',
+          '--innodb-buffer-pool-size=80M',
+          '--character-set-server=utf8mb4',
+          '--collation-server=utf8mb4_unicode_ci',
+          '--default-time-zone=+8:00',
+          '--lower-case-table-names=1'
+        ]
+    environment:
+      MYSQL_DATABASE: 'wms'
+      MYSQL_ROOT_PASSWORD: 123456  #数据库root用户密码
+  ruoyi-redis:
+    container_name: ruoyi-redis
+    image: redis
+    build:
+      context: .
+      dockerfile: redis-dockerfile
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./conf/redis.conf:/home/ruoyi/redis/redis.conf
+      - ./redis/data:/data
+    command: redis-server /home/ruoyi/redis/redis.conf
+  ruoyi-nginx:
+    container_name: ruoyi-nginx
+    image: nginx
+    build:
+      context: .
+      dockerfile: nginx-dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./html/dist:/home/ruoyi/projects/ruoyi-ui
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - ruoyi-server
+    links:
+      - ruoyi-server
+  ruoyi-server:
+    container_name: ruoyi-server
+    build:
+      context: .
+      dockerfile: ruoyi-dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./ruoyi/logs:/home/ruoyi/logs
+      - ./ruoyi/uploadPath:/home/ruoyi/uploadPath
+    depends_on:
+      - ruoyi-mysql
+      - ruoyi-redis
+    links:
+      - ruoyi-mysql
+      - ruoyi-redis
